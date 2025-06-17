@@ -13,12 +13,12 @@
             min-height: 100vh;
         }
         .container {
-            max-width: 480px;
+            max-width: 400px;
             margin: 60px auto;
             background: #fff;
             border-radius: 18px;
             box-shadow: 0 8px 32px 0 rgba(31,38,135,0.2);
-            padding: 32px 18px 18px 18px;
+            padding: 32px 24px 24px 24px;
             text-align: center;
         }
         h1 {
@@ -37,7 +37,7 @@
         .answer-btn {
             padding: 14px 36px;
             font-size: 1.2em;
-            margin: 0 14px 8px 14px;
+            margin: 0 14px;
             border: none;
             border-radius: 8px;
             background: #5bc0be;
@@ -97,70 +97,11 @@
             margin-bottom: 12px;
         }
         #counter {
-            margin-bottom: 8px;
+            margin-bottom: 12px;
             color: #17223b;
             font-size: 1.1em;
             letter-spacing: 1px;
             font-weight: 600;
-        }
-        #score {
-            margin-bottom: 14px;
-            color: #24b47e;
-            font-size: 1.1em;
-            letter-spacing: 1px;
-            font-weight: 600;
-        }
-        #summary {
-            margin: 0 auto 22px auto;
-            width: 100%;
-            max-width: 440px;
-            display: none;
-            text-align: left;
-        }
-        #summary-title {
-            text-align: center;
-            font-size: 1.4em;
-            margin-bottom: 10px;
-            color: #3a506b;
-        }
-        table {
-            border-collapse: collapse;
-            width: 100%;
-            font-size: 1em;
-        }
-        th, td {
-            border: 1px solid #e0e0e0;
-            padding: 6px;
-            text-align: center;
-        }
-        th {
-            background: #f0f0f0;
-            color: #17223b;
-        }
-        tr.correct {
-            background: #e6ffe6;
-        }
-        tr.incorrect {
-            background: #ffeaea;
-        }
-        #nextRoundBtn {
-            margin: 18px auto 0 auto;
-            display: block;
-            padding: 12px 36px;
-            font-size: 1.1em;
-            border: none;
-            border-radius: 8px;
-            background: #24b47e;
-            color: #fff;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        #nextRoundBtn:hover {
-            background: #20956a;
-        }
-        @media (max-width: 600px) {
-            .container { max-width: 99vw; }
-            table, th, td { font-size: 0.96em; }
         }
     </style>
 </head>
@@ -169,7 +110,6 @@
         <h1>German Gender Game</h1>
         <div id="status"></div>
         <div id="counter"></div>
-        <div id="score"></div>
         <div id="game" style="display:none;">
             <div id="round-message" style="display:none;"></div>
             <div id="word"></div>
@@ -181,32 +121,14 @@
             <div id="result"></div>
             <button id="next" onclick="nextWord()" style="display:none;">Next</button>
         </div>
-        <div id="summary">
-            <div id="summary-title">Round Summary</div>
-            <table id="summary-table">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Word</th>
-                        <th>Your Answer</th>
-                        <th>Correct Answer</th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
-            <button id="nextRoundBtn" onclick="startNextRound()">Next Round</button>
-        </div>
     </div>
     <script>
         let nouns = [];
         let current = null;
         let roundWords = [];
         let roundIndex = 0;
+        let questionCount = 0;
         const QUESTIONS_PER_ROUND = 20;
-        let answers = [];
-        let roundNumber = 1;
-        let score = 0;
 
         function showStatus(msg) {
             document.getElementById('status').textContent = msg;
@@ -214,10 +136,6 @@
 
         function showGame(show = true) {
             document.getElementById('game').style.display = show ? "" : "none";
-        }
-
-        function showSummary(show = true) {
-            document.getElementById('summary').style.display = show ? "" : "none";
         }
 
         function showRoundMessage(show = true) {
@@ -231,13 +149,8 @@
         }
 
         function updateCounter() {
-            // Use normal spaces, not &nbsp;
-            document.getElementById('counter').textContent =
-                `Round: ${roundNumber}  |  Question: ${roundIndex + 1} / ${roundWords.length}`;
-        }
-
-        function updateScore() {
-            document.getElementById('score').textContent = `Score: ${score} / ${roundWords.length}`;
+            document.getElementById('counter').textContent = 
+                `Question: ${roundIndex + 1} / ${roundWords.length}`;
         }
 
         function shuffle(array) {
@@ -250,22 +163,13 @@
         function guess(gender) {
             if (!current) return;
             const result = document.getElementById('result');
-            let isCorrect = (gender === current.gender);
-            if (isCorrect) {
+            if (gender === current.gender) {
                 result.textContent = "Correct! ✅";
                 result.style.color = "#24b47e";
-                score++;
             } else {
                 result.textContent = `Wrong! ❌ Correct answer: ${current.gender}`;
                 result.style.color = "#e84855";
             }
-            answers.push({
-                word: current.word,
-                yourAnswer: gender,
-                correctAnswer: current.gender,
-                isCorrect: isCorrect
-            });
-            updateScore();
             document.getElementById('next').style.display = "";
             Array.from(document.getElementsByClassName('answer-btn')).forEach(btn => btn.disabled = true);
         }
@@ -273,11 +177,14 @@
         function nextWord() {
             showRoundMessage(false);
 
-            // End of round
+            // If finished with this round's words, start a new round
             if (roundIndex >= roundWords.length) {
-                showGame(false);
-                showSummary(true);
-                createSummaryTable();
+                showRoundMessage(true);
+                setTimeout(() => {
+                    startNewRound();
+                    showRoundMessage(false);
+                    displayWordAndReset();
+                }, 1500); // Show message for 1.5 seconds
                 return;
             }
 
@@ -285,54 +192,23 @@
         }
 
         function displayWordAndReset() {
-            current = roundWords[roundIndex];
+            current = roundWords[roundIndex++];
             document.getElementById('word').textContent = current.word;
             document.getElementById('result').textContent = "";
             document.getElementById('next').style.display = "none";
             Array.from(document.getElementsByClassName('answer-btn')).forEach(btn => btn.disabled = false);
             updateCounter();
-            updateScore();
-            roundIndex++;
         }
 
         function startNewRound() {
+            // Make a fresh array of indices, shuffle, then pick the first 20 (or all if <20)
             let pool = nouns.slice();
             shuffle(pool);
             roundWords = pool.slice(0, Math.min(QUESTIONS_PER_ROUND, pool.length));
             roundIndex = 0;
-            answers = [];
-            score = 0;
         }
 
-        function createSummaryTable() {
-            const tbody = document.querySelector("#summary-table tbody");
-            tbody.innerHTML = "";
-            let correctCount = 0;
-            answers.forEach((item, idx) => {
-                const tr = document.createElement("tr");
-                tr.className = item.isCorrect ? "correct" : "incorrect";
-                if(item.isCorrect) correctCount++;
-                tr.innerHTML = `
-                    <td>${idx + 1}</td>
-                    <td>${item.word}</td>
-                    <td>${item.yourAnswer}${item.isCorrect ? " ✅" : " ❌"}</td>
-                    <td>${item.correctAnswer}</td>
-                `;
-                tbody.appendChild(tr);
-            });
-            document.getElementById('summary-title').textContent =
-                `Round ${roundNumber} Summary — Score: ${score} / ${answers.length}`;
-        }
-
-        function startNextRound() {
-            roundNumber++;
-            startNewRound();
-            showSummary(false);
-            showGame(true);
-            displayWordAndReset();
-        }
-
-        // Load nouns.json (or use inline data for local testing)
+        // Load nouns.json
         fetch('nouns.json')
             .then(response => {
                 if (!response.ok) throw new Error("Could not fetch nouns.json");
@@ -345,10 +221,8 @@
                     return;
                 }
                 showStatus("");
-                roundNumber = 1;
-                startNewRound();
                 showGame(true);
-                showSummary(false);
+                startNewRound();
                 displayWordAndReset();
             })
             .catch(err => {
