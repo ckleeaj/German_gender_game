@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>German Gender Game</title>
+    <link href="https://fonts.googleapis.com/css?family=Quicksand:700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: #f8f8fa;
+            font-family: 'Quicksand', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 400px;
+            margin: 60px auto;
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 8px 32px 0 rgba(31,38,135,0.2);
+            padding: 32px 24px 24px 24px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 2.2em;
+            margin-bottom: 18px;
+            letter-spacing: 2px;
+            color: #17223b;
+        }
+        #word {
+            font-size: 2.4em;
+            font-weight: bold;
+            color: #3a506b;
+            margin: 30px 0 28px 0;
+            letter-spacing: 1px;
+        }
+        .answer-btn {
+            padding: 14px 36px;
+            font-size: 1.2em;
+            margin: 0 14px;
+            border: none;
+            border-radius: 8px;
+            background: #5bc0be;
+            color: #fff;
+            transition: background 0.2s, transform 0.1s;
+            cursor: pointer;
+            box-shadow: 0 2px 8px 0 rgba(91,192,190,0.05);
+        }
+        .answer-btn:hover:not(:disabled) {
+            background: #3aafa9;
+            transform: translateY(-2px) scale(1.04);
+        }
+        .answer-btn:disabled {
+            background: #e0e0e0;
+            color: #c0c0c0;
+            cursor: not-allowed;
+        }
+        #result {
+            margin: 24px 0 10px 0;
+            font-weight: bold;
+            font-size: 1.2em;
+            min-height: 30px;
+        }
+        #round-message {
+            margin: 18px 0 12px 0;
+            font-size: 1.2em;
+            color: #ff9800;
+            font-weight: bold;
+            animation: pop-in 0.6s;
+        }
+        @keyframes pop-in {
+            0% { opacity: 0; transform: scale(0.8);}
+            60% { opacity: 1; transform: scale(1.1);}
+            100% { opacity: 1; transform: scale(1);}
+        }
+        #next {
+            margin-top: 10px;
+            padding: 10px 34px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 8px;
+            background: #17223b;
+            color: #fff;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        #next:hover:not(:disabled) {
+            background: #222a43;
+        }
+        #next:disabled {
+            background: #e0e0e0;
+            color: #c0c0c0;
+            cursor: not-allowed;
+        }
+        #status {
+            color: #e84855;
+            margin-bottom: 12px;
+        }
+        #counter {
+            margin-bottom: 8px;
+            color: #17223b;
+            font-size: 1.1em;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+        #score {
+            margin-bottom: 14px;
+            color: #24b47e;
+            font-size: 1.1em;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>German Gender Game</h1>
+        <div id="status"></div>
+        <div id="counter"></div>
+        <div id="score"></div>
+        <div id="game" style="display:none;">
+            <div id="round-message" style="display:none;"></div>
+            <div id="word"></div>
+            <div>
+                <button class="answer-btn" onclick="guess('der')">der</button>
+                <button class="answer-btn" onclick="guess('die')">die</button>
+                <button class="answer-btn" onclick="guess('das')">das</button>
+            </div>
+            <div id="result"></div>
+            <button id="next" onclick="nextWord()" style="display:none;">Next</button>
+        </div>
+    </div>
+    <script>
+        let nouns = [];
+        let current = null;
+        let questionCount = 0;
+        let correctCount = 0;
+        const QUESTIONS_PER_ROUND = 20;
+        let lastWord = null;
+
+        function showStatus(msg) {
+            document.getElementById('status').textContent = msg;
+        }
+
+        function showGame(show = true) {
+            document.getElementById('game').style.display = show ? "" : "none";
+        }
+
+        function showRoundMessage(msg, show = true) {
+            const el = document.getElementById('round-message');
+            if (show) {
+                el.textContent = msg;
+                el.style.display = "";
+            } else {
+                el.style.display = "none";
+            }
+        }
+
+        function updateCounter() {
+            let dispNum = (questionCount % QUESTIONS_PER_ROUND === 0 && questionCount !== 0) ? QUESTIONS_PER_ROUND : questionCount % QUESTIONS_PER_ROUND;
+            if (dispNum === 0) dispNum = 1;
+            document.getElementById('counter').textContent = 
+                `Question: ${dispNum} / ${QUESTIONS_PER_ROUND}`;
+        }
+
+        function updateScore() {
+            document.getElementById('score').textContent = `Score: ${correctCount} / ${QUESTIONS_PER_ROUND}`;
+        }
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function guess(gender) {
+            if (!current) return;
+            const result = document.getElementById('result');
+            if (gender === current.gender) {
+                result.textContent = "Correct! ✅";
+                result.style.color = "#24b47e";
+                correctCount++;
+                updateScore();
+            } else {
+                result.textContent = `Wrong! ❌ Correct answer: ${current.gender}`;
+                result.style.color = "#e84855";
+            }
+            document.getElementById('next').style.display = "";
+            Array.from(document.getElementsByClassName('answer-btn')).forEach(btn => btn.disabled = true);
+        }
+
+        function nextWord() {
+            showRoundMessage("", false);
+
+            // After every QUESTIONS_PER_ROUND questions, show the round message and reset
+            if (questionCount > 0 && questionCount % QUESTIONS_PER_ROUND === 0) {
+                showRoundMessage(`🎉 You finished a round!\nYour score: ${correctCount} / ${QUESTIONS_PER_ROUND}`, true);
+                setTimeout(() => {
+                    showRoundMessage("", false);
+                    questionCount++;
+                    correctCount = 0;
+                    updateScore();
+                    displayWordAndReset();
+                    updateCounter();
+                }, 2000); // Show message for 2 seconds
+                return;
+            }
+
+            questionCount++;
+            displayWordAndReset();
+            updateCounter();
+        }
+
+        function displayWordAndReset() {
+            // Pick a random word, avoid showing the same word twice in a row
+            let next;
+            do {
+                next = nouns[Math.floor(Math.random() * nouns.length)];
+            } while (nouns.length > 1 && next.word === lastWord?.word);
+
+            current = next;
+            lastWord = current;
+            document.getElementById('word').textContent = current.word;
+            document.getElementById('result').textContent = "";
+            document.getElementById('next').style.display = "none";
+            Array.from(document.getElementsByClassName('answer-btn')).forEach(btn => btn.disabled = false);
+        }
+
+        // Load nouns.json
+        fetch('nouns.json')
+            .then(response => {
+                if (!response.ok) throw new Error("Could not fetch nouns.json");
+                return response.json();
+            })
+            .then(data => {
+                nouns = data;
+                if (!Array.isArray(nouns) || nouns.length === 0) {
+                    showStatus("No nouns found in nouns.json.");
+                    return;
+                }
+                shuffle(nouns);
+                questionCount = 0;
+                correctCount = 0;
+                showStatus("");
+                showGame(true);
+                updateCounter();
+                updateScore();
+                nextWord(); // Start the game
+            })
+            .catch(err => {
+                showStatus("Could not load nouns.");
+                console.error(err);
+            });
+    </script>
+</body>
+</html>

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>German Gender Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      margin: 0;
+      padding: 0 10px;
+    }
+    .game-container {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      margin-top: 40px;
+      padding: 32px 20px;
+      max-width: 370px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .noun {
+      font-size: 2rem;
+      margin-bottom: 10px;
+      letter-spacing: 2px;
+      font-weight: bold;
+      color: #222;
+    }
+    .translation {
+      font-size: 1.1rem;
+      color: #555;
+      margin-bottom: 24px;
+      text-align: center;
+      min-height: 28px;
+    }
+    .buttons {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      justify-content: center;
+      width: 100%;
+    }
+    .buttons button {
+      font-size: 1.2rem;
+      padding: 12px 28px;
+      border: none;
+      border-radius: 20px;
+      background: #e4e4e4;
+      color: #333;
+      cursor: pointer;
+      transition: background 0.15s;
+      font-weight: 600;
+    }
+    .buttons button:hover,
+    .buttons button.selected {
+      background: #3981f7;
+      color: #fff;
+    }
+    .feedback {
+      font-size: 1.1rem;
+      margin-bottom: 20px;
+      min-height: 24px;
+      text-align: center;
+      font-weight: 600;
+    }
+    .feedback.correct {
+      color: #23a325;
+    }
+    .feedback.wrong {
+      color: #d31c1c;
+    }
+    .score {
+      margin-bottom: 18px;
+      font-weight: bold;
+      color: #666;
+      font-size: 1.05rem;
+    }
+    .next-btn {
+      padding: 10px 24px;
+      border: none;
+      border-radius: 16px;
+      background: #3981f7;
+      color: #fff;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      margin-top: 12px;
+      display: none;
+    }
+    @media (max-width: 500px) {
+      .game-container {
+        padding: 16px 5px;
+      }
+      .noun {
+        font-size: 1.4rem;
+      }
+      .translation {
+        font-size: 1rem;
+      }
+      .buttons button {
+        font-size: 1rem;
+        padding: 10px 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <div class="score" id="score"></div>
+    <div class="noun" id="noun">Laden...</div>
+    <div class="translation" id="translation"></div>
+    <div class="buttons">
+      <button onclick="checkAnswer('der')">der</button>
+      <button onclick="checkAnswer('die')">die</button>
+      <button onclick="checkAnswer('das')">das</button>
+    </div>
+    <div class="feedback" id="feedback"></div>
+    <button class="next-btn" id="nextBtn" onclick="nextQuestion()">Next</button>
+  </div>
+
+  <script>
+    // --- EDIT YOUR NOUN LIST HERE ---
+    // Format: ["Noun", "gender", "English translation"]
+    const nouns = [
+      ["Tisch", "der", "table"],
+      ["Blume", "die", "flower"],
+      ["Auto", "das", "car"],
+      ["Hund", "der", "dog"],
+      ["Katze", "die", "cat"],
+      ["Buch", "das", "book"],
+      // Add your own nouns here!
+    ];
+
+    // Shuffle function
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+
+    let current = 0;
+    let score = 0;
+    let total = nouns.length;
+
+    shuffle(nouns);
+
+    function updateScore() {
+      document.getElementById('score').textContent =
+        `Score: ${score} / ${current}`;
+    }
+
+    function showNoun() {
+      if (current >= nouns.length) {
+        document.getElementById('noun').textContent = "Game Over! 🎉";
+        document.getElementById('translation').textContent = "";
+        document.querySelector('.buttons').style.display = "none";
+        document.getElementById('feedback').textContent =
+          `Final Score: ${score} / ${total}`;
+        document.getElementById('feedback').className = "feedback";
+        document.getElementById('nextBtn').style.display = "none";
+        return;
+      }
+      document.getElementById('noun').textContent = nouns[current][0];
+      document.getElementById('translation').textContent = nouns[current][2];
+      document.getElementById('feedback').textContent = "";
+      document.getElementById('feedback').className = "feedback";
+      document.querySelectorAll('.buttons button').forEach(btn => {
+        btn.disabled = false;
+        btn.classList.remove('selected');
+      });
+      document.getElementById('nextBtn').style.display = "none";
+      updateScore();
+    }
+
+    function checkAnswer(article) {
+      const correct = nouns[current][1];
+      document.querySelectorAll('.buttons button').forEach(btn => {
+        btn.disabled = true;
+        if(btn.textContent === article) btn.classList.add('selected');
+      });
+      if (article === correct) {
+        document.getElementById('feedback').textContent = "✔️ Correct!";
+        document.getElementById('feedback').className = "feedback correct";
+        score++;
+      } else {
+        document.getElementById('feedback').textContent =
+          `❌ Wrong! Correct: ${correct}`;
+        document.getElementById('feedback').className = "feedback wrong";
+      }
+      document.getElementById('nextBtn').style.display = "inline-block";
+      current++;
+      updateScore();
+    }
+
+    function nextQuestion() {
+      showNoun();
+    }
+
+    // Start game
+    showNoun();
+  </script>
+</body>
+</html>
