@@ -97,8 +97,15 @@
             margin-bottom: 12px;
         }
         #counter {
-            margin-bottom: 12px;
+            margin-bottom: 8px;
             color: #17223b;
+            font-size: 1.1em;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+        #score {
+            margin-bottom: 14px;
+            color: #24b47e;
             font-size: 1.1em;
             letter-spacing: 1px;
             font-weight: 600;
@@ -162,6 +169,7 @@
         <h1>German Gender Game</h1>
         <div id="status"></div>
         <div id="counter"></div>
+        <div id="score"></div>
         <div id="game" style="display:none;">
             <div id="round-message" style="display:none;"></div>
             <div id="word"></div>
@@ -195,9 +203,10 @@
         let current = null;
         let roundWords = [];
         let roundIndex = 0;
-        let QUESTIONS_PER_ROUND = 20;
+        const QUESTIONS_PER_ROUND = 20;
         let answers = [];
-        let lastWord = null;
+        let roundNumber = 1;
+        let score = 0;
 
         function showStatus(msg) {
             document.getElementById('status').textContent = msg;
@@ -222,8 +231,13 @@
         }
 
         function updateCounter() {
-            document.getElementById('counter').textContent = 
-                showSummary ? "" : `Question: ${roundIndex + 1} / ${roundWords.length}`;
+            // Use normal spaces, not &nbsp;
+            document.getElementById('counter').textContent =
+                `Round: ${roundNumber}  |  Question: ${roundIndex + 1} / ${roundWords.length}`;
+        }
+
+        function updateScore() {
+            document.getElementById('score').textContent = `Score: ${score} / ${roundWords.length}`;
         }
 
         function shuffle(array) {
@@ -240,6 +254,7 @@
             if (isCorrect) {
                 result.textContent = "Correct! ✅";
                 result.style.color = "#24b47e";
+                score++;
             } else {
                 result.textContent = `Wrong! ❌ Correct answer: ${current.gender}`;
                 result.style.color = "#e84855";
@@ -250,6 +265,7 @@
                 correctAnswer: current.gender,
                 isCorrect: isCorrect
             });
+            updateScore();
             document.getElementById('next').style.display = "";
             Array.from(document.getElementsByClassName('answer-btn')).forEach(btn => btn.disabled = true);
         }
@@ -269,12 +285,14 @@
         }
 
         function displayWordAndReset() {
-            current = roundWords[roundIndex++];
+            current = roundWords[roundIndex];
             document.getElementById('word').textContent = current.word;
             document.getElementById('result').textContent = "";
             document.getElementById('next').style.display = "none";
             Array.from(document.getElementsByClassName('answer-btn')).forEach(btn => btn.disabled = false);
             updateCounter();
+            updateScore();
+            roundIndex++;
         }
 
         function startNewRound() {
@@ -283,6 +301,7 @@
             roundWords = pool.slice(0, Math.min(QUESTIONS_PER_ROUND, pool.length));
             roundIndex = 0;
             answers = [];
+            score = 0;
         }
 
         function createSummaryTable() {
@@ -302,13 +321,14 @@
                 tbody.appendChild(tr);
             });
             document.getElementById('summary-title').textContent =
-                `Round Summary — Score: ${correctCount} / ${answers.length}`;
+                `Round ${roundNumber} Summary — Score: ${score} / ${answers.length}`;
         }
 
         function startNextRound() {
+            roundNumber++;
+            startNewRound();
             showSummary(false);
             showGame(true);
-            startNewRound();
             displayWordAndReset();
         }
 
@@ -325,6 +345,7 @@
                     return;
                 }
                 showStatus("");
+                roundNumber = 1;
                 startNewRound();
                 showGame(true);
                 showSummary(false);
