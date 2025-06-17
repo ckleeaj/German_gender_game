@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>German Gender Game</title>
+    <link href="https://fonts.googleapis.com/css?family=Quicksand:700&display=swap" rel="stylesheet">
+    <style>
+        body { background: #f8f8fa; font-family: 'Quicksand', Arial, sans-serif; margin: 0; padding: 0; min-height: 100vh;}
+        .container { max-width: 480px; margin: 60px auto; background: #fff; border-radius: 18px; box-shadow: 0 8px 32px 0 rgba(31,38,135,0.2); padding: 32px 18px 18px 18px; text-align: center;}
+        h1 { font-size: 2.2em; margin-bottom: 18px; letter-spacing: 2px; color: #17223b;}
+        #word { font-size: 2.4em; font-weight: bold; color: #3a506b; margin: 30px 0 28px 0; letter-spacing: 1px;}
+        .answer-btn { padding: 14px 36px; font-size: 1.2em; margin: 0 14px 8px 14px; border: none; border-radius: 8px; background: #5bc0be; color: #fff; transition: background 0.2s, transform 0.1s; cursor: pointer; box-shadow: 0 2px 8px 0 rgba(91,192,190,0.05);}
+        .answer-btn:hover:not(:disabled) { background: #3aafa9; transform: translateY(-2px) scale(1.04);}
+        .answer-btn:disabled { background: #e0e0e0; color: #c0c0c0; cursor: not-allowed;}
+        #result { margin: 24px 0 10px 0; font-weight: bold; font-size: 1.2em; min-height: 30px;}
+        #counter { margin-bottom: 8px; color: #17223b; font-size: 1.1em; letter-spacing: 1px; font-weight: 600;}
+        #score { margin-bottom: 14px; color: #24b47e; font-size: 1.1em; letter-spacing: 1px; font-weight: 600;}
+        #summary { margin: 0 auto 22px auto; width: 100%; max-width: 440px; display: none; text-align: left;}
+        #summary-title { text-align: center; font-size: 1.4em; margin-bottom: 10px; color: #3a506b;}
+        table { border-collapse: collapse; width: 100%; font-size: 1em;}
+        th, td { border: 1px solid #e0e0e0; padding: 6px; text-align: center;}
+        th { background: #f0f0f0; color: #17223b;}
+        tr.correct { background: #e6ffe6;}
+        tr.incorrect { background: #ffeaea;}
+        #nextRoundBtn { margin: 18px auto 0 auto; display: block; padding: 12px 36px; font-size: 1.1em; border: none; border-radius: 8px; background: #24b47e; color: #fff; cursor: pointer; transition: background 0.2s;}
+        #nextRoundBtn:hover { background: #20956a;}
+        @media (max-width: 600px) { .container { max-width: 99vw; } table, th, td { font-size: 0.96em; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>German Gender Game</h1>
+        <div id="counter"></div>
+        <div id="score"></div>
+        <div id="game" style="display:none;">
+            <div id="word"></div>
+            <div>
+                <button class="answer-btn" onclick="guess('der')">der</button>
+                <button class="answer-btn" onclick="guess('die')">die</button>
+                <button class="answer-btn" onclick="guess('das')">das</button>
+            </div>
+            <div id="result"></div>
+            <button id="next" onclick="nextWord()" style="display:none;">Next</button>
+        </div>
+        <div id="summary" style="display:none;">
+            <div id="summary-title">Round Summary</div>
+            <table id="summary-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Word</th>
+                        <th>Your Answer</th>
+                        <th>Correct</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+            <button id="nextRoundBtn" onclick="startNextRound()">Next Round</button>
+        </div>
+    </div>
+    <script>
+        let nouns = [];
+        let roundWords = [];
+        let roundIndex = 0;
+        const QUESTIONS_PER_ROUND = 20;
+        let answers = [];
+        let roundNumber = 1;
+        let score = 0;
+
+        function updateCounter() {
+            document.getElementById('counter').textContent =
+                `Round: ${roundNumber}  |  Question: ${Math.min(roundIndex + 1, roundWords.length)} / ${roundWords.length}`;
+        }
+        function updateScore() {
+            document.getElementById('score').textContent = `Score: ${score} / ${roundWords.length}`;
+        }
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+        function showGame(show = true) {
+            document.getElementById('game').style.display = show ? "" : "none";
+        }
+        function showSummary(show = true) {
+            document.getElementById('summary').style.display = show ? "" : "none";
+        }
+        function guess(gender) {
+            let current = roundWords[roundIndex];
+            const result = document.getElementById('result');
+            let isCorrect = (gender === current.gender);
+            if (isCorrect) {
+                result.textContent = "Correct! ✅";
+                result.style.color = "#24b47e";
+                score++;
+            } else {
+                result.textContent = `Wrong! ❌ Correct answer: ${current.gender}`;
+                result.style.color = "#e84855";
+            }
+            answers.push({
+                word: current.word,
+                yourAnswer: gender,
+                correctAnswer: current.gender,
+                isCorrect: isCorrect
+            });
+            updateScore();
+            Array.from(document.getElementsByClassName('answer-btn')).forEach(btn => btn.disabled = true);
+
+            // If last question, show summary immediately
+            if (roundIndex === roundWords.length - 1) {
+                setTimeout(() => {
+                    showGame(false);
+                    showSummary(true);
+                    createSummaryTable();
+                }, 600); // brief delay for feedback, adjust or remove as you like
+            } else {
+                document.getElementById('next').style.display = "";
+            }
+        }
+        function nextWord() {
+            roundIndex++;
+            displayWordAndReset();
+        }
+        function displayWordAndReset() {
+            let current = roundWords[roundIndex];
+            document.getElementById('word').textContent = current.word;
+            document.getElementById('result').textContent = "";
+            document.getElementById('next').style.display = "none";
+            Array.from(document.getElementsByClassName('answer-btn')).forEach(btn => btn.disabled = false);
+            updateCounter();
+            updateScore();
+        }
+        function startNewRound() {
+            let pool = nouns.slice();
+            shuffle(pool);
+            roundWords = pool.slice(0, Math.min(QUESTIONS_PER_ROUND, pool.length));
+            roundIndex = 0;
+            answers = [];
+            score = 0;
+            showSummary(false);
+            showGame(true);
+            displayWordAndReset();
+        }
+        function createSummaryTable() {
+            const tbody = document.querySelector("#summary-table tbody");
+            tbody.innerHTML = "";
+            answers.forEach((item, idx) => {
+                const tr = document.createElement("tr");
+                tr.className = item.isCorrect ? "correct" : "incorrect";
+                tr.innerHTML = `
+                    <td>${idx + 1}</td>
+                    <td>${item.word}</td>
+                    <td>${item.yourAnswer}${item.isCorrect ? " ✅" : " ❌"}</td>
+                    <td>${item.correctAnswer}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            document.getElementById('summary-title').textContent =
+                `Round ${roundNumber} Summary — Score: ${score} / ${answers.length}`;
+        }
+        function startNextRound() {
+            roundNumber++;
+            startNewRound();
+        }
+
+        // Uncomment to test without nouns.json
+        /*
+        nouns = [
+            {word: "Tisch", gender: "der"},
+            {word: "Blume", gender: "die"},
+            {word: "Auto", gender: "das"},
+            {word: "Hund", gender: "der"},
+            {word: "Katze", gender: "die"},
+            {word: "Kind", gender: "das"},
+            {word: "Stuhl", gender: "der"},
+            {word: "Lampe", gender: "die"},
+            {word: "Haus", gender: "das"},
+            {word: "Vater", gender: "der"},
+            {word: "Mutter", gender: "die"},
+            {word: "Buch", gender: "das"},
+            {word: "Baum", gender: "der"},
+            {word: "Uhr", gender: "die"},
+            {word: "Bett", gender: "das"},
+            {word: "Apfel", gender: "der"},
+            {word: "Sonne", gender: "die"},
+            {word: "Mädchen", gender: "das"},
+            {word: "Schrank", gender: "der"},
+            {word: "Tasche", gender: "die"},
+        ];
+        startNewRound();
+        */
+        fetch('nouns.json')
+            .then(response => {
+                if (!response.ok) throw new Error("Could not fetch nouns.json");
+                return response.json();
+            })
+            .then(data => {
+                nouns = data;
+                if (!Array.isArray(nouns) || nouns.length === 0) {
+                    alert("No nouns found in nouns.json.");
+                    return;
+                }
+                roundNumber = 1;
+                startNewRound();
+            })
+            .catch(err => {
+                alert("Could not load nouns.");
+                console.error(err);
+            });
+    </script>
+</body>
+</html>
