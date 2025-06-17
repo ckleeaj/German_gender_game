@@ -13,12 +13,12 @@
             min-height: 100vh;
         }
         .container {
-            max-width: 400px;
+            max-width: 480px;
             margin: 60px auto;
             background: #fff;
             border-radius: 18px;
             box-shadow: 0 8px 32px 0 rgba(31,38,135,0.2);
-            padding: 32px 24px 24px 24px;
+            padding: 32px 18px 18px 18px;
             text-align: center;
         }
         h1 {
@@ -37,7 +37,7 @@
         .answer-btn {
             padding: 14px 36px;
             font-size: 1.2em;
-            margin: 0 14px;
+            margin: 0 14px 8px 14px;
             border: none;
             border-radius: 8px;
             background: #5bc0be;
@@ -103,6 +103,58 @@
             letter-spacing: 1px;
             font-weight: 600;
         }
+        #summary {
+            margin: 0 auto 22px auto;
+            width: 100%;
+            max-width: 440px;
+            display: none;
+            text-align: left;
+        }
+        #summary-title {
+            text-align: center;
+            font-size: 1.4em;
+            margin-bottom: 10px;
+            color: #3a506b;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 1em;
+        }
+        th, td {
+            border: 1px solid #e0e0e0;
+            padding: 6px;
+            text-align: center;
+        }
+        th {
+            background: #f0f0f0;
+            color: #17223b;
+        }
+        tr.correct {
+            background: #e6ffe6;
+        }
+        tr.incorrect {
+            background: #ffeaea;
+        }
+        #nextRoundBtn {
+            margin: 18px auto 0 auto;
+            display: block;
+            padding: 12px 36px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 8px;
+            background: #24b47e;
+            color: #fff;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        #nextRoundBtn:hover {
+            background: #20956a;
+        }
+        @media (max-width: 600px) {
+            .container { max-width: 99vw; }
+            table, th, td { font-size: 0.96em; }
+        }
     </style>
 </head>
 <body>
@@ -121,13 +173,31 @@
             <div id="result"></div>
             <button id="next" onclick="nextWord()" style="display:none;">Next</button>
         </div>
+        <div id="summary">
+            <div id="summary-title">Round Summary</div>
+            <table id="summary-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Word</th>
+                        <th>Your Answer</th>
+                        <th>Correct Answer</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+            <button id="nextRoundBtn" onclick="startNextRound()">Next Round</button>
+        </div>
     </div>
     <script>
         let nouns = [];
+        let current = null;
         let roundWords = [];
         let roundIndex = 0;
-        let current = null;
-        const QUESTIONS_PER_ROUND = 20;
+        let QUESTIONS_PER_ROUND = 20;
+        let answers = [];
+        let lastWord = null;
 
         function showStatus(msg) {
             document.getElementById('status').textContent = msg;
@@ -135,6 +205,10 @@
 
         function showGame(show = true) {
             document.getElementById('game').style.display = show ? "" : "none";
+        }
+
+        function showSummary(show = true) {
+            document.getElementById('summary').style.display = show ? "" : "none";
         }
 
         function showRoundMessage(show = true) {
@@ -148,8 +222,8 @@
         }
 
         function updateCounter() {
-            document.getElementById('counter').textContent =
-                `Question: ${roundIndex + 1} / ${QUESTIONS_PER_ROUND}`;
+            document.getElementById('counter').textContent = 
+                showSummary ? "" : `Question: ${roundIndex + 1} / ${roundWords.length}`;
         }
 
         function shuffle(array) {
@@ -159,30 +233,23 @@
             }
         }
 
-        function setupRound() {
-            // Pick 20 unique words and shuffle them for this round
-            if (nouns.length < QUESTIONS_PER_ROUND) {
-                showStatus("Not enough words in nouns.json. Need at least 20.");
-                showGame(false);
-                return;
-            }
-            let pool = nouns.slice();
-            shuffle(pool);
-            roundWords = pool.slice(0, QUESTIONS_PER_ROUND);
-            shuffle(roundWords);
-            roundIndex = 0;
-        }
-
         function guess(gender) {
             if (!current) return;
             const result = document.getElementById('result');
-            if (gender === current.gender) {
+            let isCorrect = (gender === current.gender);
+            if (isCorrect) {
                 result.textContent = "Correct! ✅";
                 result.style.color = "#24b47e";
             } else {
                 result.textContent = `Wrong! ❌ Correct answer: ${current.gender}`;
                 result.style.color = "#e84855";
             }
+            answers.push({
+                word: current.word,
+                yourAnswer: gender,
+                correctAnswer: current.gender,
+                isCorrect: isCorrect
+            });
             document.getElementById('next').style.display = "";
             Array.from(document.getElementsByClassName('answer-btn')).forEach(btn => btn.disabled = true);
         }
@@ -190,19 +257,14 @@
         function nextWord() {
             showRoundMessage(false);
 
-            // Round finished
-            if (roundIndex >= QUESTIONS_PER_ROUND) {
-                showRoundMessage(true);
-                setTimeout(() => {
-                    showRoundMessage(false);
-                    setupRound();
-                    updateCounter();
-                    displayWordAndReset();
-                }, 1500); // Show message for 1.5 seconds
+            // End of round
+            if (roundIndex >= roundWords.length) {
+                showGame(false);
+                showSummary(true);
+                createSummaryTable();
                 return;
             }
 
-            updateCounter();
             displayWordAndReset();
         }
 
@@ -212,9 +274,45 @@
             document.getElementById('result').textContent = "";
             document.getElementById('next').style.display = "none";
             Array.from(document.getElementsByClassName('answer-btn')).forEach(btn => btn.disabled = false);
+            updateCounter();
         }
 
-        // Load nouns.json
+        function startNewRound() {
+            let pool = nouns.slice();
+            shuffle(pool);
+            roundWords = pool.slice(0, Math.min(QUESTIONS_PER_ROUND, pool.length));
+            roundIndex = 0;
+            answers = [];
+        }
+
+        function createSummaryTable() {
+            const tbody = document.querySelector("#summary-table tbody");
+            tbody.innerHTML = "";
+            let correctCount = 0;
+            answers.forEach((item, idx) => {
+                const tr = document.createElement("tr");
+                tr.className = item.isCorrect ? "correct" : "incorrect";
+                if(item.isCorrect) correctCount++;
+                tr.innerHTML = `
+                    <td>${idx + 1}</td>
+                    <td>${item.word}</td>
+                    <td>${item.yourAnswer}${item.isCorrect ? " ✅" : " ❌"}</td>
+                    <td>${item.correctAnswer}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            document.getElementById('summary-title').textContent =
+                `Round Summary — Score: ${correctCount} / ${answers.length}`;
+        }
+
+        function startNextRound() {
+            showSummary(false);
+            showGame(true);
+            startNewRound();
+            displayWordAndReset();
+        }
+
+        // Load nouns.json (or use inline data for local testing)
         fetch('nouns.json')
             .then(response => {
                 if (!response.ok) throw new Error("Could not fetch nouns.json");
@@ -222,14 +320,14 @@
             })
             .then(data => {
                 nouns = data;
-                if (!Array.isArray(nouns) || nouns.length < QUESTIONS_PER_ROUND) {
-                    showStatus("Not enough nouns in nouns.json. Need at least 20.");
+                if (!Array.isArray(nouns) || nouns.length === 0) {
+                    showStatus("No nouns found in nouns.json.");
                     return;
                 }
                 showStatus("");
+                startNewRound();
                 showGame(true);
-                setupRound();
-                updateCounter();
+                showSummary(false);
                 displayWordAndReset();
             })
             .catch(err => {
