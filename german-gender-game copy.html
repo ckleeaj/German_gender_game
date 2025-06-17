@@ -97,8 +97,15 @@
             margin-bottom: 12px;
         }
         #counter {
-            margin-bottom: 12px;
+            margin-bottom: 8px;
             color: #17223b;
+            font-size: 1.1em;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+        #score {
+            margin-bottom: 14px;
+            color: #24b47e;
             font-size: 1.1em;
             letter-spacing: 1px;
             font-weight: 600;
@@ -110,6 +117,7 @@
         <h1>German Gender Game</h1>
         <div id="status"></div>
         <div id="counter"></div>
+        <div id="score"></div>
         <div id="game" style="display:none;">
             <div id="round-message" style="display:none;"></div>
             <div id="word"></div>
@@ -124,10 +132,11 @@
     </div>
     <script>
         let nouns = [];
-        let roundWords = [];
-        let roundIndex = 0;
         let current = null;
+        let questionCount = 0;
+        let correctCount = 0;
         const QUESTIONS_PER_ROUND = 20;
+        let lastWord = null;
 
         function showStatus(msg) {
             document.getElementById('status').textContent = msg;
@@ -137,19 +146,25 @@
             document.getElementById('game').style.display = show ? "" : "none";
         }
 
-        function showRoundMessage(show = true) {
-            const msg = document.getElementById('round-message');
+        function showRoundMessage(msg, show = true) {
+            const el = document.getElementById('round-message');
             if (show) {
-                msg.textContent = "🎉 You finished a round!";
-                msg.style.display = "";
+                el.textContent = msg;
+                el.style.display = "";
             } else {
-                msg.style.display = "none";
+                el.style.display = "none";
             }
         }
 
         function updateCounter() {
-            document.getElementById('counter').textContent =
-                `Question: ${roundIndex + 1} / ${QUESTIONS_PER_ROUND}`;
+            let dispNum = (questionCount % QUESTIONS_PER_ROUND === 0 && questionCount !== 0) ? QUESTIONS_PER_ROUND : questionCount % QUESTIONS_PER_ROUND;
+            if (dispNum === 0) dispNum = 1;
+            document.getElementById('counter').textContent = 
+                `Question: ${dispNum} / ${QUESTIONS_PER_ROUND}`;
+        }
+
+        function updateScore() {
+            document.getElementById('score').textContent = `Score: ${correctCount} / ${QUESTIONS_PER_ROUND}`;
         }
 
         function shuffle(array) {
@@ -159,26 +174,14 @@
             }
         }
 
-        function setupRound() {
-            // Pick 20 unique words and shuffle them for this round
-            if (nouns.length < QUESTIONS_PER_ROUND) {
-                showStatus("Not enough words in nouns.json. Need at least 20.");
-                showGame(false);
-                return;
-            }
-            let pool = nouns.slice();
-            shuffle(pool);
-            roundWords = pool.slice(0, QUESTIONS_PER_ROUND);
-            shuffle(roundWords);
-            roundIndex = 0;
-        }
-
         function guess(gender) {
             if (!current) return;
             const result = document.getElementById('result');
             if (gender === current.gender) {
                 result.textContent = "Correct! ✅";
                 result.style.color = "#24b47e";
+                correctCount++;
+                updateScore();
             } else {
                 result.textContent = `Wrong! ❌ Correct answer: ${current.gender}`;
                 result.style.color = "#e84855";
@@ -188,26 +191,36 @@
         }
 
         function nextWord() {
-            showRoundMessage(false);
+            showRoundMessage("", false);
 
-            // Round finished
-            if (roundIndex >= QUESTIONS_PER_ROUND) {
-                showRoundMessage(true);
+            // After every QUESTIONS_PER_ROUND questions, show the round message and reset
+            if (questionCount > 0 && questionCount % QUESTIONS_PER_ROUND === 0) {
+                showRoundMessage(`🎉 You finished a round!\nYour score: ${correctCount} / ${QUESTIONS_PER_ROUND}`, true);
                 setTimeout(() => {
-                    showRoundMessage(false);
-                    setupRound();
-                    updateCounter();
+                    showRoundMessage("", false);
+                    questionCount++;
+                    correctCount = 0;
+                    updateScore();
                     displayWordAndReset();
-                }, 1500); // Show message for 1.5 seconds
+                    updateCounter();
+                }, 2000); // Show message for 2 seconds
                 return;
             }
 
-            updateCounter();
+            questionCount++;
             displayWordAndReset();
+            updateCounter();
         }
 
         function displayWordAndReset() {
-            current = roundWords[roundIndex++];
+            // Pick a random word, avoid showing the same word twice in a row
+            let next;
+            do {
+                next = nouns[Math.floor(Math.random() * nouns.length)];
+            } while (nouns.length > 1 && next.word === lastWord?.word);
+
+            current = next;
+            lastWord = current;
             document.getElementById('word').textContent = current.word;
             document.getElementById('result').textContent = "";
             document.getElementById('next').style.display = "none";
@@ -222,15 +235,18 @@
             })
             .then(data => {
                 nouns = data;
-                if (!Array.isArray(nouns) || nouns.length < QUESTIONS_PER_ROUND) {
-                    showStatus("Not enough nouns in nouns.json. Need at least 20.");
+                if (!Array.isArray(nouns) || nouns.length === 0) {
+                    showStatus("No nouns found in nouns.json.");
                     return;
                 }
+                shuffle(nouns);
+                questionCount = 0;
+                correctCount = 0;
                 showStatus("");
                 showGame(true);
-                setupRound();
                 updateCounter();
-                displayWordAndReset();
+                updateScore();
+                nextWord(); // Start the game
             })
             .catch(err => {
                 showStatus("Could not load nouns.");
